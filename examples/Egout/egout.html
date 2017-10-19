@@ -1,0 +1,124 @@
+<html>
+    <head>
+        <title>Itowns - Egout</title>
+
+        <meta charset="UTF-8">
+        <link rel="stylesheet" type="text/css" href="../css/example.css">
+        <link rel="stylesheet" type="text/css" href="../css/loading_screen.css">
+
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="../js/GUI/dat.gui/dat.gui.min.js"></script>
+    </head>
+    <body>
+        <div id="viewerDiv"></div>
+        <script src="../js/GUI/GuiTools.js"></script>
+        <script src="../js/OrientedImageLayerHelper.js"></script>
+        <script src="../../dist/itowns.js"></script>
+        <script src="../js/proj4defs/3946.js"></script>
+        <script src="../js/proj4defs/2154.js"></script>
+        <script src="../../dist/debug.js"></script>
+        <script type="text/javascript">
+            /* global itowns, document, GuiTools, view, promises */
+            var positionOnGlobe = { longitude: 2.362552, latitude: 48.874245, altitude: 50 };
+            var promises = [];
+
+            // `viewerDiv` will contain iTowns' rendering area (`<canvas>`)
+            var viewerDiv = document.getElementById('viewerDiv');
+
+            // Instanciate iTowns GlobeView*
+            var view = new itowns.GlobeView(viewerDiv, positionOnGlobe, {
+                noControls: true,
+                // sseSubdivisionThreshold: 14,
+                handleCollision: false });
+
+            // create Immersive control
+            view.controls = new itowns.StreetControls(view, {
+                animationDuration: 50,
+            });
+
+            // limit camera far, to increase performance
+            view.camera.camera3D.far = 100;
+            view.camera.camera3D.near = 0.1;
+
+            // open camera fov
+            view.camera.camera3D.fov = 75;
+
+            addOrtho();
+
+            addElevation();
+
+            var streetLayerPromise = createOrientedImageLayer(view, 'streetTexture',
+                'http://localhost:8080/examples/Egout/stereopolis/Paris-150611_0504-{cameraId}-00010_00{panoId}.jpg',
+                'http://localhost:8080/examples/Egout/stereopolis_pano.geojson',
+                'http://localhost:8080/examples/Egout/stereopolis_camera.json', 80);
+
+            var undergroundLayerPromise = createOrientedImageLayer(view, 'undergroundTexture',
+                'http://localhost:8080/examples/Egout/egout/image_{cameraId}_{panoId}.jpg',
+                'http://localhost:8080/examples/Egout/egout_pano.geojson',
+                'http://localhost:8080/examples/Egout/egout_camera.json', 0);
+
+            var buttons;
+
+            var promises = [streetLayerPromise, undergroundLayerPromise];
+            Promise.all(promises).then((res) => {
+
+                var streetImageLayer = res[0];
+                // create WFS buildings layer
+                createWfsBuildingLayer(streetImageLayer.material);
+
+                var undergroundImageLayer = res[1];
+                // load ply surface
+                addPlyLayer('EgoutPLY', 'http://localhost:8080/examples/Egout/egout.ply', 
+                    new itowns.THREE.Vector3().set(4199000, 173000, 4781000), undergroundImageLayer.material);
+
+                // buttons used to switch from a layer to another
+                var MyButtons = function() {
+                    this.street = function() {
+                        streetImageLayer.onPanoChanged = dispatchOnPanoChangedEventToControl;
+                        undergroundImageLayer.onPanoChanged = () => {};
+                        updateControlFromLayer(streetImageLayer);
+                        view.controls.moveCameraToCurrentPosition();
+                        view.mainLoop.gfxEngine.renderer.domElement.focus();
+                    };
+                    this.underground = function() {
+                        undergroundImageLayer.onPanoChanged = dispatchOnPanoChangedEventToControl;
+                        streetImageLayer.onPanoChanged = () => {};
+                        updateControlFromLayer(undergroundImageLayer);
+                        view.controls.moveCameraToCurrentPosition();
+                        view.mainLoop.gfxEngine.renderer.domElement.focus();
+                    };
+                }
+
+                // GUI buttons
+                var guiImmersive = menuGlobe.gui.addFolder('Immersive');
+                buttons = new MyButtons();
+                guiImmersive.add(buttons, 'street');
+                guiImmersive.add(buttons, 'underground');
+
+                // init camera
+                view.controls.setCameraToCurrentPosition();
+                view.notifyChange(view.camera.camera3D);
+
+                // first activate street layer, and disable undergroud layer, using the button
+                buttons.street();
+                
+                // eslint-disable-next-line no-console
+                console.info('Globe initialized');
+            });
+
+            var menuGlobe = new GuiTools('menuDiv');
+            menuGlobe.view = view;
+
+            const d = new debug.Debug(view, menuGlobe.gui);
+            debug.createTileDebugUI(menuGlobe.gui, view, view.tileLayer, d);
+
+            // update control informations from layer (used when we change immersive layer)
+            function updateControlFromLayer(layer) {
+                view.controls.setPreviousPosition(layer.getPreviousPano() ? layer.getPreviousPano().position : undefined);
+                view.controls.setCurrentPosition(layer.getCurrentPano().position);
+                view.controls.setNextPosition(layer.getNextPano().position);
+            }
+
+        </script>
+    </body>
+</html>
