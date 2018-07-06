@@ -9,6 +9,12 @@
 
 [![Coverage Status](https://coveralls.io/repos/github/gliegard/itowns/badge.svg?branch=master)](https://coveralls.io/github/gliegard/itowns?branch=master)
 
+[![Coverage Status](https://coveralls.io/repos/github/gliegard/itowns/badge.svg?branch=master)](https://coveralls.io/github/gliegard/itowns?branch=master)
+
+[![Coverage Status](https://coveralls.io/repos/github/gliegard/itowns/badge.svg?branch=master)](https://coveralls.io/github/gliegard/itowns?branch=master)
+
+[![Coverage Status](https://coveralls.io/repos/github/gliegard/itowns/badge.svg?branch=master)](https://coveralls.io/github/gliegard/itowns?branch=master)
+
 ## What is it?
 
 iTowns is a [Three.js](https://threejs.org/)-based framework written in Javascript/WebGL for visualizing 3D geospatial data.
