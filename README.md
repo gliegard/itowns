@@ -3,7 +3,11 @@
 <img src="https://raw.githubusercontent.com/iTowns/itowns.github.io/master/images/itowns_logo_300x134.png" />
 </p>
 
-[![Coverage Status](https://coveralls.io/repos/github/gliegard/itowns/badge.svg?branch=move_travis_to_check)](https://coveralls.io/github/gliegard/itowns?branch=move_travis_to_check)
+[![Coverage Status](https://coveralls.io/repos/github/gliegard/itowns/badge.svg?branch=master)](https://coveralls.io/github/gliegard/itowns?branch=master)
+
+[![Coverage Status](https://coveralls.io/repos/github/gliegard/itowns/badge.svg?branch=master)](https://coveralls.io/github/gliegard/itowns?branch=master)
+
+[![Coverage Status](https://coveralls.io/repos/github/gliegard/itowns/badge.svg?branch=master)](https://coveralls.io/github/gliegard/itowns?branch=master)
 
 ## What is it?
 
