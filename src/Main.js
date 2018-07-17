@@ -1,3 +1,9 @@
+import * as THREE from 'three';
+
+const PLYLoader = require('three-ply-loader');
+
+PLYLoader(THREE);
+
 export { default as Coordinates, UNIT, ellipsoidSizes } from 'Core/Geographic/Coordinates';
 export { default as Extent } from 'Core/Geographic/Extent';
 export { default as Ellipsoid } from 'Core/Math/Ellipsoid';
