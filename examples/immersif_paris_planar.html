@@ -1,0 +1,183 @@
+<html>
+    <head>
+        <title>Itowns - WFS (geojson) example</title>
+
+        <meta charset="UTF-8">
+        <link rel="stylesheet" type="text/css" href="css/example.css">
+        <link rel="stylesheet" type="text/css" href="css/loading_screen.css">
+
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body>
+        <div id="viewerDiv"></div>
+        <script src="../dist/itowns.js"></script>
+        <script src="../dist/debug.js"></script>
+        <script src="js/loading_screen.js"></script>
+        <script src="js/GUI/dat.gui/dat.gui.min.js"></script>
+        <script src="js/GUI/GuiTools.js"></script>
+        <script type="text/javascript">
+            var extent;
+            var viewerDiv;
+            var view;
+            var meshes;
+
+            // Define projection that we will use (taken from https://epsg.io/3946, Proj4js section)
+            itowns.proj4.defs('EPSG:3946',
+                '+proj=lcc +lat_1=45.25 +lat_2=46.75 +lat_0=46 +lon_0=3 +x_0=1700000 +y_0=5200000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
+            itowns.proj4.defs('EPSG:2154',
+                '+proj=lcc +lat_1=49 +lat_2=44 +lat_0=46.5 +lon_0=3 +x_0=700000 +y_0=6600000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
+
+            var extent = new itowns.Extent(
+                'EPSG:3857',
+                -20037508.342789, 20037508.342789,
+                -20037508.342789, 20037508.342789);
+
+            // `viewerDiv` will contain iTowns' rendering area (`<canvas>`)
+            viewerDiv = document.getElementById('viewerDiv');
+            const ALTI_SOL = 35;
+            var promises = [];
+
+            var orientedImageLayer;
+
+            // Instanciate PlanarView*
+            view = new itowns.PlanarView(viewerDiv, extent, { maxSubdivisionLevel: 17 });
+            setupLoadingScreen(viewerDiv, view);
+            view.tileLayer.disableSkirt = true;
+
+            function addLayerCb(layer) {
+                return view.addLayer(layer);
+            }
+
+             promises.push(itowns.Fetcher.json('./layers/JSONLayers/OPENSM.json').then(addLayerCb));
+             // view.camera.camera3D.rotateZ(-Math.PI / 2);
+
+             view.camera.camera3D.position.set(259900, 6249500, 200);
+
+            var controls = undefined;
+            
+            //
+            // COMMENT THESE LINES TO USE PLANAR CONTROLS
+            //
+            var controls = new itowns.ImmersiveControls(view, {
+                animationDuration: 50,
+            });
+
+            if (controls == undefined) {
+                // eslint-disable-next-line no-new
+                var controls = new itowns.PlanarControls(view, {
+                    // We do not want the user to zoom out too much
+                    maxAltitude: 40000000,
+                    // We want to keep the rotation disabled, to only have a view from the top
+                    enableRotation: true,
+                    // Faster zoom in/out speed
+                    zoomInFactor: 0.5,
+                    zoomOutFactor: 0.5,
+                    // Don't zoom too much on smart zoom
+                    smartZoomHeightMax: 100000,
+                });
+            }
+
+            // Request redraw
+            view.notifyChange();
+
+
+            function colorBuildings(properties) {
+                if (properties.id.indexOf('bati_remarquable') === 0) {
+                    return new itowns.THREE.Color(0x5555ff);
+                } else if (properties.id.indexOf('bati_industriel') === 0) {
+                    return new itowns.THREE.Color(0xff5555);
+                }
+                return new itowns.THREE.Color(0xeeeeee);
+            }
+            function extrudeBuildings(properties) {
+                return properties.hauteur + 10;
+            }
+
+            function acceptFeature(properties) {
+                return !!properties.hauteur;
+            }
+
+            function altitudeBuildings(properties) {
+                // console.log('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA: ', properties.z_min - properties.hauteur - 3)
+                return properties.z_min - properties.hauteur - 3 - ALTI_SOL;
+            }
+
+            promises.push(view.addLayer({
+                type: 'geometry',
+                update: itowns.OrientedImageProcessing.update(),
+                images: 'http://www.itowns-project.org/itowns-sample-data-small/images/140616/Paris-140616_0740-{sensorId}-00001_0000{imageId}.jpg',
+                orientations: 'panoramicsMetaDataParis.geojson',
+                calibrations: 'cameraCalibration.json',
+                protocol: 'orientedimage',
+                id: 'demo_orientedImage',
+                level: 16,
+                crs: 'EPSG:2154',
+                crsOut: view.referenceCrs,
+                format: 'geojson',
+                axisHelpers: false,
+                cameraHelpers: false,
+                sphereRadius: 500,
+            }, view.tileLayer).then(function addWfsLayer(layer) {
+                orientedImageLayer = layer;
+
+                if (controls instanceof itowns.ImmersiveControls) {
+                    controls.addLayer(orientedImageLayer);
+                }
+
+                view.addLayer({
+                    type: 'geometry',
+                    update: itowns.FeatureProcessing.update,
+                    convert: itowns.Feature2Mesh.convert({
+                        color: colorBuildings,
+                        altitude: altitudeBuildings,
+                        extrude: extrudeBuildings }),
+                    onMeshCreated: (mesh) => mesh.traverse(object => object.material = orientedImageLayer.material),
+                    url: 'http://wxs.ign.fr/72hpsel8j8nhb5qgdh07gcyp/geoportail/wfs?',
+                    networkOptions: { crossOrigin: 'anonymous' },
+                    protocol: 'wfs',
+                    version: '2.0.0',
+                    id: 'WFS Buildings',
+                    typeName: 'BDTOPO_BDD_WLD_WGS84G:bati_remarquable,BDTOPO_BDD_WLD_WGS84G:bati_indifferencie,BDTOPO_BDD_WLD_WGS84G:bati_industriel',
+                    level: 17,
+                    projection: 'EPSG:3857',
+                    extent: {
+                            west: 259800,
+                            east: 260000,
+                            south: 6249202,
+                            north: 6249706,
+                    },
+                    ipr: 'IGN',
+                    format: 'application/json',
+                });
+            }));
+            
+            view.notifyChange();
+            Promise.all(promises).then(function () {
+                var menuGlobe = new GuiTools('menuDiv', view);
+                menuGlobe.addImageryLayersGUI(view.getLayers(function (l) { return l.type === 'color'; }));
+                var d = new debug.Debug(view, menuGlobe.gui);
+                debug.createTileDebugUI(menuGlobe.gui, view, view.tileLayer, d);
+
+                debug.OrientedImageDebug.initTools(view, orientedImageLayer, menuGlobe.gui);
+
+                for (let layer of view.getLayers()) {
+                    if (layer.id === 'WFS Buildings') {
+                        layer.whenReady.then( function _(layer) {
+                            var gui = debug.GeometryDebug.createGeometryDebugUI(menuGlobe.gui, view, layer);
+                            debug.GeometryDebug.addWireFrameCheckbox(gui, view, layer);
+                        });
+                    }
+                }
+                
+                if (controls instanceof itowns.ImmersiveControls) {
+                    controls.setCameraToCurrentPano();
+                }
+
+                console.log(view.tileLayer);
+                view.tileLayer.object3d.position.z = ALTI_SOL;
+                view.tileLayer.object3d.updateMatrixWorld(true);
+                
+            });
+        </script>
+    </body>
+</html>
