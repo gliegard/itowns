@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Itowns - 3d-tiles Ile de France</title>
+
+        <meta charset="UTF-8">
+        <link rel="stylesheet" type="text/css" href="css/example.css">
+        <link rel="stylesheet" type="text/css" href="css/loading_screen.css">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="js/GUI/dat.gui/dat.gui.min.js"></script>
+    </head>
+    <body>
+        <div id="viewerDiv"></div>
+        <div class="help">
+            <p><b>Feature Information:</b></p>
+            <div id="featureInfo"></div>
+        </div>
+        <script src="js/GUI/GuiTools.js"></script>
+        <script src="../dist/itowns.js"></script>
+        <script src="js/loading_screen.js"></script>
+        <script src="../dist/debug.js"></script>
+        <script src="js/3dTilesHelper.js"></script>
+        <script type="text/javascript">
+            /* global itowns,document,GuiTools*/
+            // example cambremer
+            // var positionOnGlobe = { longitude: 0.048, latitude: 49.151, altitude: 5000 }
+            // example paris
+            var positionOnGlobe = { longitude: 2.346060, latitude: 48.862264, altitude: 50000 }
+            // iTowns namespace defined here
+            var viewerDiv = document.getElementById('viewerDiv');
+
+            var view = new itowns.GlobeView(viewerDiv, positionOnGlobe);
+
+            view.controls.setTilt(40, true);
+                
+            view.controls.minDistance = 0;
+
+            view.camera.camera3D.near = 5;
+            setupLoadingScreen(viewerDiv, view);
+
+            var menuGlobe = new GuiTools('menuDiv', view, 300);
+
+/*
+            itowns.Fetcher.json('./layers/JSONLayers/EtatMajor.json').then(function _(config) {
+                config.source = new itowns.WMTSSource(config.source);
+                var layer = new itowns.ColorLayer('EtatMajor', config);
+                layer.opacity = 1;
+                view.addLayer(layer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+            });
+
+            itowns.Fetcher.json('./layers/JSONLayers/Cassini.json').then(function _(config) {
+                config.source = new itowns.WMTSSource(config.source);
+                var layer = new itowns.ColorLayer('Cassini', config);
+                layer.opacity = 1;
+                view.addLayer(layer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+            });
+*/
+            itowns.Fetcher.json('./layers/JSONLayers/Top25.json').then(function _(config) {
+                config.source = new itowns.WMTSSource(config.source);
+                var layer = new itowns.ColorLayer('Top25', config);
+                layer.opacity = 0;
+                view.addLayer(layer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+            });
+
+            itowns.Fetcher.json('./layers/JSONLayers/Ortho.json').then(function _(config) {
+                config.source = new itowns.WMTSSource(config.source);
+                var layer = new itowns.ColorLayer('Ortho', config);
+                layer.opacity = 1;
+                view.addLayer(layer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+            });
+
+            itowns.Fetcher.json('./layers/JSONLayers/ScanEX.json').then(function _(config) {
+                config.source = new itowns.WMTSSource(config.source);
+                var layer = new itowns.ColorLayer('ScanEx', config);
+                layer.opacity = 0.5;
+                view.addLayer(layer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+            });
+/*
+            itowns.Fetcher.json('./layers/JSONLayers/Administrative.json').then(function _(config) {
+                config.source = new itowns.WMTSSource(config.source);
+                var layer = new itowns.ColorLayer('Administrative', config);
+                layer.opacity = 1;
+                view.addLayer(layer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+            });
+
+
+            itowns.Fetcher.json('./layers/JSONLayers/OPENSM.json').then(function _(config) {
+                config.source = new itowns.TMSSource(config.source);
+                var layer = new itowns.ColorLayer('Ortho', config);
+                view.addLayer(layer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+            });
+*/
+            // Add two elevation layers.
+            // These will deform iTowns globe geometry to represent terrain elevation.
+            function addElevationLayerFromConfig(config) {
+                config.source = new itowns.WMTSSource(config.source);
+                var layer = new itowns.ElevationLayer(config.id, config);
+                view.addLayer(layer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+            }
+           // itowns.Fetcher.json('./layers/JSONLayers/WORLD_DTM.json').then(addElevationLayerFromConfig);
+           itowns.Fetcher.json('./layers/JSONLayers/IGN_MNT_HIGHRES.json').then(addElevationLayerFromConfig);
+
+            // Create a new Layer 3d-tiles For Viewer Request Volume
+            // -----------------------------------------------------
+            var $3dTilesLayerRequestVolume = new itowns.GeometryLayer('3d-tiles-request-volume', new itowns.THREE.Group());
+
+            $3dTilesLayerRequestVolume.name = 'RequestVolume';          
+            $3dTilesLayerRequestVolume.url = 'http://localhost:8080/cache_test/idf/root.json';
+            $3dTilesLayerRequestVolume.protocol = '3d-tiles'
+            $3dTilesLayerRequestVolume.overrideMaterials = false;  // custom cesium shaders are not functional
+            $3dTilesLayerRequestVolume.sseThreshold = 1;
+
+            // $3dTilesLayerRequestVolume.overrideMaterials = new
+            // itowns.THREE.MeshPhongMaterial( {
+            //      color: 0xFFFFFF,
+            //      emissive: 0x000000,
+            //      metalness: 1,
+            //      roughness: 1,
+            //      transparent: false,
+            //      depthTest: true,
+            //      side: itowns.THREE.DoubleSide
+            //  } );
+            
+            // itowns.View.prototype.addLayer.call(view, $3dTilesLayerRequestVolume);
+  
+
+            var pickingArgs = {};
+            pickingArgs.htmlDiv = document.getElementById('featureInfo');
+            pickingArgs.view = view;
+            pickingArgs.layer = $3dTilesLayerRequestVolume;
+            itowns.View.prototype.addLayer.call(view,
+                $3dTilesLayerRequestVolume).then(function _() {
+                    window.addEventListener('mousemove', fillHTMLWithPickingInfo.bind(pickingArgs),
+                        false); });
+
+
+
+            // Add the UI Debug
+            var d = new debug.Debug(view, menuGlobe.gui);
+            debug.createTileDebugUI(menuGlobe.gui, view, view.tileLayer, d);
+
+            debug.create3dTilesDebugUI(menuGlobe.gui, view, $3dTilesLayerRequestVolume, d);
+
+            d.zoom = function() {
+                var coord = new itowns.Coordinates('EPSG:4326', positionOnGlobe.longitude, positionOnGlobe.latitude, positionOnGlobe.altitude);
+                view.camera.camera3D.position.copy(coord.as('EPSG:4978').xyz());
+                view.camera.camera3D.lookAt(0, 0, 0);
+                view.notifyChange(view.camera.camera3D);
+            }
+            menuGlobe.gui.add(d, 'zoom').name('Go to Paris');
+        </script>
+    </body>
+</html>
