@@ -41,7 +41,7 @@ function createWfsBuildingLayer(material) {
         projection: 'EPSG:4326',
         ipr: 'IGN',
         format: 'application/json',
-        level: 10,
+        zoom: { min: 15, max: 15 },
         extent: {
             west: 2.35,
             east: 2.37,
@@ -51,7 +51,7 @@ function createWfsBuildingLayer(material) {
     });
 
     // create geometry layer for the buildings
-    var wfsBuildingLayer = new itowns.GeometryLayer('WFS Building', new itowns.THREE.Group(), {
+    var wfsBuildingLayer = new itowns.GeometryLayer('Buildings', new itowns.THREE.Group(), {
         update: itowns.FeatureProcessing.update,
         convert: itowns.Feature2Mesh.convert({
             altitude: altitudeBuildings,
@@ -59,17 +59,23 @@ function createWfsBuildingLayer(material) {
 
         // when a building is created, it get the projective texture mapping, from oriented image layer.
         onMeshCreated: (mesh) => mesh.traverse(object => object.material = material),
-        source: wfsBuildingSource
+        source: wfsBuildingSource,
+        overrideAltitudeInToZero: true
     });
 
         // add the created building layer
-    return view.addLayer(wfsBuildingLayer);
+    view.addLayer(wfsBuildingLayer).then(function addDebugUI(buildingLayer) {
+        var gui = debug.GeometryDebug.createGeometryDebugUI(menuGlobe.gui, view, buildingLayer);
+        debug.GeometryDebug.addWireFrameCheckbox(gui, view, buildingLayer);
+    });
 }
 
 function dispatchOnPanoChangedEventToControl(e) {
-    view.controls.setPreviousPosition(e.previousPanoPosition);
-    view.controls.setCurrentPosition(e.currentPanoPosition);
-    view.controls.setNextPosition(e.nextPanoPosition);
+    const controls = view.controls.isSwitchControls ? view.controls.streetControls : view.controls;
+    if (!controls.isStreetControls) return;
+    controls.setPreviousPosition(e.previousPanoPosition);
+    controls.setCurrentPosition(e.currentPanoPosition);
+    controls.setNextPosition(e.nextPanoPosition);
 }
 
 function createOrientedImageLayer(view, id, textureUrl, orientationsUrl, calibrationUrl, backgroundDistance) {
